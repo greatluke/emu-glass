@@ -1,42 +1,30 @@
-# emu-glass: low-latency viewer for headless Android emulators
+<p align="center"><img src="assets/icon_256.png" width="128" alt="emu-glass"></p>
 
-A Looking-Glass-style viewer for the Android Emulator. Frames come from the emulator's
-gRPC `streamScreenshot` API over shared memory (`/dev/shm`, MMAP transport), so nothing is
-video-encoded: full resolution, ~60 fps, ~33 ms click-to-pixel. Mouse and keyboard go back
-over gRPC (`streamInputEvent`).
+# emu-glass
 
-## Requirements
-- Android Emulator started with gRPC enabled, e.g.
-  `emulator -avd MyAvd -port 5554 -no-window -gpu host -grpc 8554`
-- Python 3.12 with `grpcio`, `protobuf`, `pygame-ce`
+A low-latency alternative to scrcpy for the **local Android Emulator**.
 
-## Usage
+scrcpy encodes the screen to video inside the emulated device, using the guest's software
+encoder. emu-glass instead reads frames straight from the emulator's GPU output over gRPC and
+shared memory: full resolution, no compression artifacts, about 33 ms from touch to pixel (measured).
+
+It only works with the Android Emulator on the same machine. For real devices or remote machines,
+use scrcpy.
+
+## Run
+
 ```
-python emuglass.py --emu MyAvd                 # or emulator-5554, or --port 8554 [--token T]
-python emuglass.py --emu MyAvd --pane left     # crop to the left half at full resolution
-python emuglass.py --emu MyAvd --debug         # log every input event and mapped coordinates
+emulator -avd MyAvd -no-window -gpu host -grpc 8554
+pip install grpcio protobuf pygame-ce numpy opencv-python
+python emuglass.py --emu MyAvd            # or --emu emulator-5554, or --port 8554
 ```
+
+Options: `--pane left|right`, `--frame-fps 30|60`, `--sharpen 0..1`, `--view-only`, `--debug`.
 
 ## Controls
-| Input | Action |
-|---|---|
-| Left click / drag | Touch |
-| Wheel | Swipe |
-| Right click, Esc, Ctrl+Backspace, Alt+B | Back |
-| Middle click, Ctrl+H, Alt+H | Home |
-| Ctrl+O, Alt+S | Recents |
-| Ctrl+M / Ctrl+P | Menu / Power |
-| Ctrl+= / Ctrl+- | Volume up / down |
-| Ctrl+Left / Ctrl+Right | Rotate |
-| Ctrl+S, F2 | Save screenshot |
-| Ctrl+F | Fullscreen |
-| F1 | Overlay (fps, frame age, transport, help) |
 
-Touches are sent in the display's native (unrotated) coordinates; the viewer reads the
-frame's rotation and converts automatically.
+Left click/drag: touch. Wheel: swipe. Right click, Esc: Back. Middle click: Home.
+Android Emulator shortcuts: Ctrl+H, Ctrl+Backspace, Ctrl+O, Ctrl+M, Ctrl+P, Ctrl+=/-, Ctrl+Left/Right, Ctrl+S.
+Ctrl+F: fullscreen. F1: overlay with help.
 
-## Notes
-- `emu_grpc/` is generated from the Android Emulator's `emulator_controller.proto`
-  (Android SDK `emulator/lib/`, Apache License 2.0). Regenerate with `grpc_tools.protoc`
-  after emulator updates.
-- Tests: `python -m pytest tests`
+`emu_grpc/` is generated from the emulator's `emulator_controller.proto` (Android SDK, Apache 2.0).
