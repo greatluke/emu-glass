@@ -1,4 +1,4 @@
-# kc_view: low-latency viewer for headless Android emulators
+# emu-glass: low-latency viewer for headless Android emulators
 
 A Looking-Glass-style viewer for the Android Emulator. Frames come from the emulator's
 gRPC `streamScreenshot` API over shared memory (`/dev/shm`, MMAP transport), so nothing is
@@ -12,9 +12,9 @@ over gRPC (`streamInputEvent`).
 
 ## Usage
 ```
-python kc_view.py --emu MyAvd                 # or emulator-5554, or --port 8554 [--token T]
-python kc_view.py --emu MyAvd --pane left     # crop to the left half at full resolution
-python kc_view.py --emu MyAvd --debug         # log every input event and mapped coordinates
+python emuglass.py --emu MyAvd                 # or emulator-5554, or --port 8554 [--token T]
+python emuglass.py --emu MyAvd --pane left     # crop to the left half at full resolution
+python emuglass.py --emu MyAvd --debug         # log every input event and mapped coordinates
 ```
 
 ## Controls
@@ -36,7 +36,7 @@ Touches are sent in the display's native (unrotated) coordinates; the viewer rea
 frame's rotation and converts automatically.
 
 ## Notes
-- `kc_grpc/` is generated from the Android Emulator's `emulator_controller.proto`
+- `emu_grpc/` is generated from the Android Emulator's `emulator_controller.proto`
   (Android SDK `emulator/lib/`, Apache License 2.0). Regenerate with `grpc_tools.protoc`
   after emulator updates.
 - Tests: `python -m pytest tests`

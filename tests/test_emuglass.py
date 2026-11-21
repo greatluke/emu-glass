@@ -3,11 +3,11 @@ import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-import kc_view as kv
+import emuglass as kv
 
 INI = """grpc.port=8558
-avd.id=KC_Phone_3
-avd.name=KC Phone 3
+avd.id=My_Avd_3
+avd.name=My Avd 3
 port.serial=5558
 """
 
@@ -24,11 +24,11 @@ def test_discover_by_name_and_serial():
         proc = Path(t) / "proc"
         (proc / "123").mkdir(parents=True)
         d = _mk(t, 123, INI + "grpc.token=abc\n")
-        for name in ("kc_phone_3", "KC_Phone_3", "KC Phone 3", "emulator-5558"):
+        for name in ("my_avd_3", "My_Avd_3", "My Avd 3", "emulator-5558"):
             r = kv.discover(name, [d], proc)
             assert r["port"] == 8558 and r["token"] == "abc" and r["serial"] == "emulator-5558"
         try:
-            kv.discover("kc_phone", [d], proc)
+            kv.discover("my_avd", [d], proc)
             assert False
         except LookupError:
             pass
@@ -40,7 +40,7 @@ def test_discover_skips_stale_and_noauth():
         (proc / "9").mkdir(parents=True)
         d = _mk(t, 9, INI)
         _mk(t, 77, INI.replace("8558", "9999"))          # pid 77 not alive -> stale
-        r = kv.discover("kc_phone_3", [d], proc)
+        r = kv.discover("my_avd_3", [d], proc)
         assert r["port"] == 8558 and r["token"] is None
 
 
@@ -84,7 +84,7 @@ def test_wheel_swipe_clamped():
 
 
 def test_frame_to_native_rotations():
-    # KC_Phone_3 measured: SkinRotation 3 -> k=1, 1900x1800 frame, native 1800x1900
+    # My_Avd_3 measured: SkinRotation 3 -> k=1, 1900x1800 frame, native 1800x1900
     assert kv.frame_to_native(310, 590, 1900, 1800, 1) == (590, 1589)
     assert kv.frame_to_native(0, 0, 1900, 1800, 1) == (0, 1899)
     assert kv.frame_to_native(1899, 1799, 1900, 1800, 1) == (1799, 0)

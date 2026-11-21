@@ -5,7 +5,7 @@ Frames come from the emulator gRPC API (streamScreenshot) through a shared-memor
 file in /dev/shm, are drawn in a native pygame window (GPU-scaled when the SDL renderer is
 available), and input goes back over gRPC (streamInputEvent / sendTouch / sendKey).
 
-  kc_view.py --emu kc_phone_3 [--pane left|right|both] [--no-mmap] [--port N --token T]
+  emuglass.py --emu my_avd_3 [--pane left|right|both] [--no-mmap] [--port N --token T]
 Mouse: left drag = touch, right = Back, middle = Home, wheel = swipe.
 Keys (Android Emulator defaults): Ctrl+Backspace/Esc back, Ctrl+H home, Ctrl+O recents, Ctrl+M menu, Ctrl+P power,
 Ctrl+=/- volume, Ctrl+Left/Right rotate, Ctrl+S save screenshot (~/Pictures), Ctrl+F fullscreen; also Alt+B/H/S, F1 overlay, F2 save window screenshot.
@@ -55,7 +55,7 @@ def parse_ini(text: str) -> dict:
 
 
 def discover(emu: str, dirs=None, proc: Path = Path("/proc")) -> dict:
-    """Find a running emulator's gRPC endpoint. emu = avd id/name (kc_phone_3), KC_Phone_3, or emulator-5558."""
+    """Find a running emulator's gRPC endpoint. emu = avd id/name (my_avd_3), My_Avd_3, or emulator-5558."""
     want = norm(emu)
     for d in dirs if dirs is not None else running_dirs():
         try:
@@ -148,7 +148,7 @@ def frame_to_native(fx: int, fy: int, fw: int, fh: int, k: int) -> tuple[int, in
 
     The emulator takes touch coordinates in native space. k = quarter turns clockwise that turn
     the native display into the frame; from Image.format.rotation s (SkinRotation) that is
-    k = (4 - s) % 4 (s=3 reverse landscape -> k=1, measured on KC_Phone_3). Native size is
+    k = (4 - s) % 4 (s=3 reverse landscape -> k=1, measured on My_Avd_3). Native size is
     (fw, fh) for even k, (fh, fw) for odd.
     """
     k %= 4
@@ -172,7 +172,7 @@ def wheel_swipe(x: int, y: int, dy: int, crop: tuple, step: int = 260):
 class Viewer:
     def __init__(self, port: int, token: str | None, mmap_on: bool = True, display: int = 0):
         import grpc
-        from kc_grpc import emulator_controller_pb2 as pb, emulator_controller_pb2_grpc as rpc
+        from emu_grpc import emulator_controller_pb2 as pb, emulator_controller_pb2_grpc as rpc
         self.grpc, self.pb = grpc, pb
         self.channel = grpc.insecure_channel(f"127.0.0.1:{port}", options=[
             ("grpc.max_receive_message_length", 64 << 20), ("grpc.max_send_message_length", 16 << 20)])
@@ -197,7 +197,7 @@ class Viewer:
 
     # -- frames
     def _open_mmap(self):
-        self.path = f"/dev/shm/kc_view_{os.getpid()}"
+        self.path = f"/dev/shm/emuglass_{os.getpid()}"
         fd = os.open(self.path, os.O_CREAT | os.O_RDWR | os.O_TRUNC, 0o600)
         os.ftruncate(fd, MMAP_BYTES)
         self.mm = mmap.mmap(fd, MMAP_BYTES)
@@ -366,7 +366,7 @@ def run(args) -> int:
     os.environ.setdefault("SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR", "0")
     import pygame
     pygame.init()
-    pygame.display.set_caption(f"kc_view {info['avd']}")
+    pygame.display.set_caption(f"emuglass {info['avd']}")
     t0 = time.time()
     while v.frame is None and time.time() - t0 < 15:
         time.sleep(0.02)
@@ -384,7 +384,7 @@ def run(args) -> int:
     size = (max(200, int(crop[2] * sc)), max(200, int(crop[3] * sc)))
 
     from pygame._sdl2 import video
-    win = video.Window(f"kc_view {info['avd']}", size=size, resizable=True)
+    win = video.Window(f"emuglass {info['avd']}", size=size, resizable=True)
     ren = video.Renderer(win)
     ren.draw_color = (0, 0, 0, 255)
     tex = None
@@ -459,11 +459,11 @@ def run(args) -> int:
                 elif m == ("local", "overlay"):
                     overlay = not overlay
                 elif m == ("local", "screenshot"):
-                    save_shot(str(Path(args.screenshot or "/tmp/kc_view.png")))
+                    save_shot(str(Path(args.screenshot or "/tmp/emuglass.png")))
                 elif m == ("local", "save_shot"):
                     d = Path.home() / "Pictures"
                     d.mkdir(exist_ok=True)
-                    p = d / f"kc_view_{info['avd']}_{time.strftime('%Y%m%d_%H%M%S')}.png"
+                    p = d / f"emuglass_{info['avd']}_{time.strftime('%Y%m%d_%H%M%S')}.png"
                     save_shot(str(p))
                     toast, toast_t = f"saved {p}", time.time()
                 elif m == ("local", "fullscreen"):
@@ -559,7 +559,7 @@ def run(args) -> int:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--emu", help="emulator key / AVD id, e.g. kc_phone_3")
+    ap.add_argument("--emu", help="emulator key / AVD id, e.g. my_avd_3")
     ap.add_argument("--port", type=int, help="gRPC port (skips discovery)")
     ap.add_argument("--token", help="gRPC bearer token")
     ap.add_argument("--pane", choices=list(PANES), default="both")
@@ -576,7 +576,7 @@ def main(argv=None) -> int:
     try:
         return run(args)
     except LookupError as e:
-        print(f"kc_view: {e}", file=sys.stderr)
+        print(f"emuglass: {e}", file=sys.stderr)
         return 3
 
 
