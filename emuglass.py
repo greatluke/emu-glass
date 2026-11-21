@@ -592,7 +592,7 @@ def main(argv=None) -> int:
     ap.add_argument("--port", type=int, help="gRPC port (skips discovery)")
     ap.add_argument("--token", help="gRPC bearer token")
     ap.add_argument("--pane", choices=list(PANES), default="both")
-    ap.add_argument("--frame-fps", type=int, default=30, help="emulator frames processed per second (default 30)")
+    ap.add_argument("--frame-fps", type=int, default=60, help="emulator frames processed per second (default 60)")
     ap.add_argument("--sharpen", type=float, default=0.7, help="unsharp-mask amount after downscaling (0 = off; default 0.7)")
     ap.add_argument("--no-smooth", dest="smooth", action="store_false", help="GPU scaling only (no CPU area-average downscale)")
     ap.add_argument("--no-mmap", action="store_true", help="force inline image bytes")
