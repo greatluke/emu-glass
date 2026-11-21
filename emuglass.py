@@ -387,7 +387,7 @@ def run(args) -> int:
     # which drops pixels and breaks up small text.  Must be set before textures are created.
     os.environ.setdefault("SDL_RENDER_SCALE_QUALITY", "best")
     from pygame._sdl2 import video
-    win = video.Window(f"emuglass {info['avd']}", size=size, resizable=True)
+    win = video.Window(f"emuglass {info['avd']} — {args.frame_fps} fps", size=size, resizable=True)
     ren = video.Renderer(win)
     ren.draw_color = (0, 0, 0, 255)
     tex = None
