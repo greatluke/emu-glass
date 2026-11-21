@@ -392,6 +392,7 @@ def run(args) -> int:
     ren.draw_color = (0, 0, 0, 255)
     tex = None
     surf = None
+    stex, stex_size, use_small = None, None, False
     cur = (0, 0)
     font = pygame.font.Font(None, 22)
     overlay = args.overlay
@@ -495,11 +496,24 @@ def run(args) -> int:
                 surf = pygame.image.frombuffer(buf, (w, h), "RGBA")
             if tex is None:
                 tex = video.Texture(ren, (w, h), streaming=True)
-            if args.pane == "both":
-                tex.update(surf)                              # surface wraps the mmap: no CPU copy
-            else:                                             # upload only the visible pane
-                r = pygame.Rect(*crop)
-                tex.update(surf.subsurface(r), area=r)
+            _, _, dw0, dh0 = dest_rect()
+            if args.smooth and dw0 < crop[2] * 0.95:          # shrinking: area-average on the CPU
+                import numpy as np, cv2                       # (GPU linear filtering still breaks up small text)
+                cv2.setNumThreads(2)
+                x0, y0, cw, ch = crop
+                arr = np.frombuffer(buf, np.uint8, count=w * h * 4).reshape(h, w, 4)[y0:y0 + ch, x0:x0 + cw]
+                small = np.ascontiguousarray(cv2.resize(arr, (dw0, dh0), interpolation=cv2.INTER_AREA))
+                if stex is None or stex_size != (dw0, dh0):
+                    stex, stex_size = video.Texture(ren, (dw0, dh0), streaming=True), (dw0, dh0)
+                stex.update(pygame.image.frombuffer(small.tobytes(), (dw0, dh0), "RGBA"))
+                use_small = True
+            else:
+                use_small = False
+                if args.pane == "both":
+                    tex.update(surf)                          # surface wraps the mmap: no CPU copy
+                else:                                         # upload only the visible pane
+                    r = pygame.Rect(*crop)
+                    tex.update(surf.subsurface(r), area=r)
             fps_n += 1
             # latency: emulator timestamp vs our clock, only meaningful if the clocks agree
             if ts:
@@ -512,9 +526,13 @@ def run(args) -> int:
             fps, fps_n, fps_t = fps_n / (now - fps_t), 0, now
 
         ren.clear()
-        if tex is not None:
-            dx, dy, dw, dh = dest_rect()
+        dx, dy, dw, dh = dest_rect()
+        if use_small and stex is not None and stex_size == (dw, dh):
+            stex.draw(dstrect=pygame.Rect(dx, dy, dw, dh))
+        elif tex is not None and not use_small:
             tex.draw(srcrect=pygame.Rect(*crop), dstrect=pygame.Rect(dx, dy, dw, dh))
+        elif stex is not None:                                # window resized since the last frame
+            stex.draw(dstrect=pygame.Rect(dx, dy, dw, dh))
         if overlay:
             lat = f"{sum(lat_hist)/len(lat_hist):.0f} ms" if lat_hist else "n/a"
             lines = [f"{fps:5.1f} fps   {v.path_used}   {w}x{h}   pane={args.pane}",
@@ -566,6 +584,7 @@ def main(argv=None) -> int:
     ap.add_argument("--port", type=int, help="gRPC port (skips discovery)")
     ap.add_argument("--token", help="gRPC bearer token")
     ap.add_argument("--pane", choices=list(PANES), default="both")
+    ap.add_argument("--no-smooth", dest="smooth", action="store_false", help="GPU scaling only (no CPU area-average downscale)")
     ap.add_argument("--no-mmap", action="store_true", help="force inline image bytes")
     ap.add_argument("--view-only", action="store_true", help="ignore all input")
     ap.add_argument("--overlay", action="store_true", help="start with the stats overlay on")
