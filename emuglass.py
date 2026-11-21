@@ -393,6 +393,7 @@ def run(args) -> int:
     tex = None
     surf = None
     stex, stex_size, use_small = None, None, False
+    last_up = 0.0
     cur = (0, 0)
     font = pygame.font.Font(None, 22)
     overlay = args.overlay
@@ -482,9 +483,13 @@ def run(args) -> int:
                 if not pygame.key.get_mods() & (pygame.KMOD_ALT | pygame.KMOD_CTRL):
                     v.text(ev.text)
 
-        with v.lock:
-            fr, newframe = v.frame, v.dirty
-            v.dirty = False
+        with v.lock:                                          # cap processed frames at --frame-fps
+            fr = v.frame
+            newframe = v.dirty and (time.time() - last_up >= 1.0 / max(1, args.frame_fps))
+            if newframe:
+                v.dirty = False
+        if newframe:
+            last_up = time.time()
         w, h, seq, ts, recv_us, buf = fr
         if (w, h) != (fw, fh) or surf is None:                # first frame or rotation / resize
             fw, fh = w, h
@@ -584,6 +589,7 @@ def main(argv=None) -> int:
     ap.add_argument("--port", type=int, help="gRPC port (skips discovery)")
     ap.add_argument("--token", help="gRPC bearer token")
     ap.add_argument("--pane", choices=list(PANES), default="both")
+    ap.add_argument("--frame-fps", type=int, default=30, help="emulator frames processed per second (default 30)")
     ap.add_argument("--no-smooth", dest="smooth", action="store_false", help="GPU scaling only (no CPU area-average downscale)")
     ap.add_argument("--no-mmap", action="store_true", help="force inline image bytes")
     ap.add_argument("--view-only", action="store_true", help="ignore all input")
