@@ -508,6 +508,9 @@ def run(args) -> int:
                 x0, y0, cw, ch = crop
                 arr = np.frombuffer(buf, np.uint8, count=w * h * 4).reshape(h, w, 4)[y0:y0 + ch, x0:x0 + cw]
                 small = np.ascontiguousarray(cv2.resize(arr, (dw0, dh0), interpolation=cv2.INTER_AREA))
+                if args.sharpen > 0:                          # unsharp mask: crisper small text
+                    blur = cv2.GaussianBlur(small, (0, 0), 1.0)
+                    small = np.ascontiguousarray(cv2.addWeighted(small, 1 + args.sharpen, blur, -args.sharpen, 0))
                 if stex is None or stex_size != (dw0, dh0):
                     stex, stex_size = video.Texture(ren, (dw0, dh0), streaming=True), (dw0, dh0)
                 stex.update(pygame.image.frombuffer(small.tobytes(), (dw0, dh0), "RGBA"))
@@ -590,6 +593,7 @@ def main(argv=None) -> int:
     ap.add_argument("--token", help="gRPC bearer token")
     ap.add_argument("--pane", choices=list(PANES), default="both")
     ap.add_argument("--frame-fps", type=int, default=30, help="emulator frames processed per second (default 30)")
+    ap.add_argument("--sharpen", type=float, default=0.7, help="unsharp-mask amount after downscaling (0 = off; default 0.7)")
     ap.add_argument("--no-smooth", dest="smooth", action="store_false", help="GPU scaling only (no CPU area-average downscale)")
     ap.add_argument("--no-mmap", action="store_true", help="force inline image bytes")
     ap.add_argument("--view-only", action="store_true", help="ignore all input")
